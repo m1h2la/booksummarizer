@@ -1,93 +1,59 @@
-// frontend/src/pages/Dashboard.jsx
+import streamlit as st
+import requests
 
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+st.set_page_config(page_title="📘 Book Summary Web App", layout="centered")
 
-export default function Dashboard() {
-  const [file, setFile] = useState(null);
-  const [summary, setSummary] = useState('');
-  const [topicSummary, setTopicSummary] = useState('');
-  const [bookConcept, setBookConcept] = useState('');
+st.title("📘 Book Summary Web App")
 
-  const handleFileUpload = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    }
-  };
+st.markdown("""
+This app lets users:
+- 📄 Upload a book file (PDF, DOCX, etc.)
+- 📚 Summarize each chapter
+- 🧠 Extract topic summaries from specific page ranges
+- 🧾 Get the overall concept of the book
+""")
 
-  const handleSummarize = async (type) => {
-    if (!file) {
-      alert("Please upload a book file first.");
-      return;
-    }
+# --- File Upload ---
+uploaded_file = st.file_uploader("Upload Book File (PDF, DOCX, etc):", type=["pdf", "doc", "docx"])
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', type);
+# --- Summary Type Options ---
+summary_type = st.radio("Choose Action:", [
+    "Chapter Summary", 
+    "Topic Summary (with Page Range)", 
+    "Book Concept"
+])
 
-    try {
-      const response = await fetch('http://localhost:8000/summarize', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
+# --- Page range for topic summary ---
+start_page, end_page = None, None
+if summary_type == "Topic Summary (with Page Range)":
+    col1, col2 = st.columns(2)
+    with col1:
+        start_page = st.number_input("Start Page:", min_value=1, step=1)
+    with col2:
+        end_page = st.number_input("End Page:", min_value=1, step=1)
 
-      switch (type) {
-        case 'chapter':
-          setSummary(data.result);
-          break;
-        case 'topic':
-          setTopicSummary(data.result);
-          break;
-        case 'concept':
-          setBookConcept(data.result);
-          break;
-        default:
-          break;
-      }
-    } catch (error) {
-      alert("Error processing file.");
-    }
-  };
+# --- Submission ---
+if uploaded_file:
+    st.success("✅ File uploaded successfully.")
+    if st.button(f"Generate {summary_type}"):
+        with st.spinner("⏳ Processing your file, please wait..."):
+            try:
+                files = {"file": uploaded_file}
+                data = {"type": summary_type.lower().replace(" ", "")}
 
-  return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">Book Summary Web App</h1>
+                if summary_type == "Topic Summary (with Page Range)":
+                    data["start_page"] = int(start_page)
+                    data["end_page"] = int(end_page)
 
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          <label className="font-semibold">Upload Book File (PDF, DOCX, etc):</label>
-          <Input type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} />
+                response = requests.post("http://localhost:8000/summarize", files=files, data=data)
 
-          <div className="flex flex-wrap gap-4">
-            <Button onClick={() => handleSummarize('chapter')}>Chapter Summary</Button>
-            <Button onClick={() => handleSummarize('topic')}>Topic Summary</Button>
-            <Button onClick={() => handleSummarize('concept')}>Book Concept</Button>
-          </div>
-        </CardContent>
-      </Card>
+                if response.status_code == 200:
+                    result = response.json().get("result", "No summary found.")
+                    st.text_area("📄 Result:", value=result, height=300)
+                else:
+                    st.error("❌ Failed to get summary. Please try again.")
 
-      <Tabs defaultValue="chapter">
-        <TabsList>
-          <TabsTrigger value="chapter">Chapter Summary</TabsTrigger>
-          <TabsTrigger value="topic">Topic Summary</TabsTrigger>
-          <TabsTrigger value="concept">Book Concept</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="chapter">
-          <Textarea value={summary} rows={10} readOnly className="mt-4" />
-        </TabsContent>
-        <TabsContent value="topic">
-          <Textarea value={topicSummary} rows={10} readOnly className="mt-4" />
-        </TabsContent>
-        <TabsContent value="concept">
-          <Textarea value={bookConcept} rows={10} readOnly className="mt-4" />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+else:
+    st.info("⬆️ Please upload a book file to begin.")
