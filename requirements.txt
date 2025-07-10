@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+PyMuPDF
+pdfplumber
+python-docx
+transformers
+torch
+openai
+numpy
+scikit-learn
+
