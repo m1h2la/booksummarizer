@@ -1,3 +1,5 @@
+// frontend/src/pages/Dashboard.jsx
+
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,30 +25,38 @@ export default function Dashboard() {
       return;
     }
 
-    const dummyResponse = {
-      chapter: "Chapter 1: Introduction to Biology\nSummary: Biology is the study of living organisms...",
-      topic: "Pages 10–15: Photosynthesis\nTopic Summary: This section explains how plants convert light into energy...",
-      concept: "Book Concept: This book provides a comprehensive understanding of life sciences..."
-    };
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
 
-    switch (type) {
-      case 'chapter':
-        setSummary(dummyResponse.chapter);
-        break;
-      case 'topic':
-        setTopicSummary(dummyResponse.topic);
-        break;
-      case 'concept':
-        setBookConcept(dummyResponse.concept);
-        break;
-      default:
-        break;
+    try {
+      const response = await fetch('http://localhost:8000/summarize', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+
+      switch (type) {
+        case 'chapter':
+          setSummary(data.result);
+          break;
+        case 'topic':
+          setTopicSummary(data.result);
+          break;
+        case 'concept':
+          setBookConcept(data.result);
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      alert("Error processing file.");
     }
   };
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">📚 Book Summary Web App</h1>
+      <h1 className="text-3xl font-bold">Book Summary Web App</h1>
 
       <Card>
         <CardContent className="p-4 space-y-4">
@@ -54,9 +64,9 @@ export default function Dashboard() {
           <Input type="file" accept=".pdf,.doc,.docx" onChange={handleFileUpload} />
 
           <div className="flex flex-wrap gap-4">
-            <Button onClick={() => handleSummarize('chapter')}>📖 Chapter Summary</Button>
-            <Button onClick={() => handleSummarize('topic')}>📝 Topic Summary</Button>
-            <Button onClick={() => handleSummarize('concept')}>💡 Book Concept</Button>
+            <Button onClick={() => handleSummarize('chapter')}>Chapter Summary</Button>
+            <Button onClick={() => handleSummarize('topic')}>Topic Summary</Button>
+            <Button onClick={() => handleSummarize('concept')}>Book Concept</Button>
           </div>
         </CardContent>
       </Card>
